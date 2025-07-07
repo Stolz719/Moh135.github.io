@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مطاردة الكنوز الفضائية</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .game-container {
+            width: 90vw;
+            max-width: 1000px;
+            height: 90vh;
+            max-height: 700px;
+            position: relative;
+            border: 3px solid #4ecdc4;
+            border-radius: 20px;
+            overflow: hidden;
+            background: linear-gradient(45deg, #0f0f23 0%, #1a1a2e 100%);
+            box-shadow: 0 0 50px rgba(78, 205, 196, 0.3);
+        }
+
+        .game-canvas {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: 
+                radial-gradient(circle at 20% 20%, rgba(255, 107, 107, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(78, 205, 196, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 40% 60%, rgba(254, 202, 87, 0.1) 0%, transparent 50%);
+            overflow: hidden;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, white, transparent),
+                radial-gradient(2px 2px at 40px 70px, white, transparent),
+                radial-gradient(1px 1px at 90px 40px, white, transparent),
+                radial-gradient(1px 1px at 130px 80px, white, transparent),
+                radial-gradient(2px 2px at 160px 30px, white, transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            animation: moveStars 20s linear infinite;
+        }
+
+        @keyframes moveStars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100px); }
+        }
+
+        .player {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            bottom: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: all 0.1s ease;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.5);
+        }
+
+        .player::before {
+            content: '🚀';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 2rem;
+        }
+
+        .player::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 30px;
+            background: linear-gradient(to bottom, #ff6b6b, transparent);
+            border-radius: 50%;
+            animation: flame 0.1s infinite alternate;
+        }
+
+        @keyframes flame {
+            from { height: 30px; }
+            to { height: 20px; }
+        }
+
+        .treasure {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #feca57, #ff9ff3);
+            border-radius: 50%;
+            animation: treasureFloat 2s ease-in-out infinite alternate;
+            box-shadow: 0 0 15px rgba(254, 202, 87, 0.7);
+        }
+
+        .treasure::before {
+            content: '💎';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+        }
+
+        @keyframes treasureFloat {
+            from { transform: rotate(0deg) scale(1); }
+            to { transform: rotate(360deg) scale(1.1); }
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, #ee5a52, #ff6b6b);
+            border-radius: 10px;
+            animation: obstacleMove 3s linear infinite;
+            box-shadow: 0 0 15px rgba(238, 90, 82, 0.7);
+        }
+
+        .obstacle::before {
+            content: '☄️';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+        }
+
+        @keyframes obstacleMove {
+            from { transform: translateY(-50px) rotate(0deg); }
+            to { transform: translateY(100vh) rotate(360deg); }
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        .lives {
+            font-size: 1.5rem;
+            color: #ff6b6b;
+        }
+
+        .level {
+            font-size: 1.2rem;
+            color: #feca57;
+        }
+
+        .game-over, .start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .game-over h2, .start-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #feca57);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(255, 107, 107, 0.3);
+        }
+
+        .game-over p, .start-screen p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.2rem;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.5);
+        }
+
+        .instructions {
+            text-align: center;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #4ecdc4;
+            color: white;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(78, 205, 196, 0.2);
+        }
+
+        .power-up {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(45deg, #ff9ff3, #54a0ff);
+            border-radius: 50%;
+            animation: powerUpFloat 1.5s ease-in-out infinite alternate;
+            box-shadow: 0 0 20px rgba(84, 160, 255, 0.7);
+        }
+
+        .power-up::before {
+            content: '⚡';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+        }
+
+        @keyframes powerUpFloat {
+            from { transform: scale(1) rotate(0deg); }
+            to { transform: scale(1.2) rotate(180deg); }
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: #4ecdc4;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleMove 1s ease-out forwards;
+        }
+
+        @keyframes particleMove {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.5) translate(var(--dx), var(--dy));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .game-container {
+                width: 95vw;
+                height: 95vh;
+            }
+            
+            .ui {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .game-over h2, .start-screen h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-canvas">
+            <div class="stars"></div>
+            <div class="ui">
+                <div class="score">النقاط: <span id="score">0</span></div>
+                <div class="level">المستوى: <span id="level">1</span></div>
+                <div class="lives">الحياة: <span id="lives">❤️❤️❤️</span></div>
+            </div>
+            <div class="player" id="player"></div>
+        </div>
+
+        <div class="start-screen" id="startScreen">
+            <h1>🚀 مطاردة الكنوز الفضائية 🚀</h1>
+            <div class="instructions">
+                <p>اجمع الكنوز 💎 وتجنب العقبات ☄️</p>
+                <p>اجمع القوة الخاصة ⚡ لتحصل على حماية مؤقتة</p>
+                <p>استخدم الأسهم أو الأزرار للتحكم في المركبة</p>
+            </div>
+            <button class="btn" onclick="startGame()">ابدأ اللعبة</button>
+            <div class="controls">
+                <div class="control-btn" onclick="movePlayer('left')">⬅️ يسار</div>
+                <div class="control-btn" onclick="movePlayer('right')">➡️ يمين</div>
+            </div>
+        </div>
+
+        <div class="game-over" id="gameOver" style="display: none;">
+            <h2>انتهت اللعبة!</h2>
+            <p>النقاط النهائية: <span id="finalScore">0</span></p>
+            <p>أعلى نقاط: <span id="highScore">0</span></p>
+            <button class="btn" onclick="restartGame()">العب مرة أخرى</button>
+        </div>
+    </div>
+
+    <script>
+        let gameState = {
+            isPlaying: false,
+            isPaused: false,
+            score: 0,
+            level: 1,
+            lives: 3,
+            playerPosition: 50,
+            treasures: [],
+            obstacles: [],
+            powerUps: [],
+            particles: [],
+            gameSpeed: 1,
+            isInvincible: false,
+            invincibilityTimer: 0,
+            highScore: localStorage.getItem('spaceGameHighScore') || 0
+        };
+
+        const player = document.getElementById('player');
+        const gameCanvas = document.querySelector('.game-canvas');
+        const scoreElement = document.getElementById('score');
+        const levelElement = document.getElementById('level');
+        const livesElement = document.getElementById('lives');
+        const startScreen = document.getElementById('startScreen');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreElement = document.getElementById('finalScore');
+        const highScoreElement = document.getElementById('highScore');
+
+        function startGame() {
+            gameState.isPlaying = true;
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            resetGame();
+            gameLoop();
+        }
+
+        function resetGame() {
+            gameState.score = 0;
+            gameState.level = 1;
+            gameState.lives = 3;
+            gameState.playerPosition = 50;
+            gameState.treasures = [];
+            gameState.obstacles = [];
+            gameState.powerUps = [];
+            gameState.particles = [];
+            gameState.gameSpeed = 1;
+            gameState.isInvincible = false;
+            gameState.invincibilityTimer = 0;
+            updateUI();
+        }
+
+        function updateUI() {
+            scoreElement.textContent = gameState.score;
+            levelElement.textContent = gameState.level;
+            livesElement.textContent = '❤️'.repeat(gameState.lives);
+            
+            // تحديث موقع اللاعب
+            player.style.left = gameState.playerPosition + '%';
+            
+            // تأثير الحماية
+            if (gameState.isInvincible) {
+                player.style.filter = 'brightness(1.5) drop-shadow(0 0 20px #54a0ff)';
+            } else {
+                player.style.filter = 'brightness(1)';
+            }
+        }
+
+        function movePlayer(direction) {
+            if (!gameState.isPlaying) return;
+            
+            if (direction === 'left' && gameState.playerPosition > 5) {
+                gameState.playerPosition -= 5;
+            } else if (direction === 'right' && gameState.playerPosition < 95) {
+                gameState.playerPosition += 5;
+            }
+            updateUI();
+        }
+
+        function createTreasure() {
+            const treasure = document.createElement('div');
+            treasure.className = 'treasure';
+            treasure.style.left = Math.random() * 90 + '%';
+            treasure.style.top = '-50px';
+            gameCanvas.appendChild(treasure);
+            gameState.treasures.push(treasure);
+        }
+
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            obstacle.style.left = Math.random() * 90 + '%';
+            obstacle.style.top = '-50px';
+            gameCanvas.appendChild(obstacle);
+            gameState.obstacles.push(obstacle);
+        }
+
+        function createPowerUp() {
+            const powerUp = document.createElement('div');
+            powerUp.className = 'power-up';
+            powerUp.style.left = Math.random() * 90 + '%';
+            powerUp.style.top = '-50px';
+            gameCanvas.appendChild(powerUp);
+            gameState.powerUps.push(powerUp);
+        }
+
+        function createParticle(x, y) {
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.setProperty('--dx', (Math.random() - 0.5) * 100 + 'px');
+                particle.style.setProperty('--dy', (Math.random() - 0.5) * 100 + 'px');
+                gameCanvas.appendChild(particle);
+                gameState.particles.push(particle);
+                
+                setTimeout(() => {
+                    if (particle.parentNode) {
+                        particle.parentNode.removeChild(particle);
+                    }
+                    gameState.particles = gameState.particles.filter(p => p !== particle);
+                }, 1000);
+            }
+        }
+
+        function moveObjects() {
+            // تحريك الكنوز
+            gameState.treasures.forEach((treasure, index) => {
+                const top = parseInt(treasure.style.top) || 0;
+                treasure.style.top = (top + 3 * gameState.gameSpeed) + 'px';
+                
+                if (top > gameCanvas.offsetHeight) {
+                    treasure.parentNode.removeChild(treasure);
+                    gameState.treasures.splice(index, 1);
+                }
+            });
+
+            // تحريك العقبات
+            gameState.obstacles.forEach((obstacle, index) => {
+                const top = parseInt(obstacle.style.top) || 0;
+                obstacle.style.top = (top + 4 * gameState.gameSpeed) + 'px';
+                
+                if (top > gameCanvas.offsetHeight) {
+                    obstacle.parentNode.removeChild(obstacle);
+                    gameState.obstacles.splice(index, 1);
+                }
+            });
+
+            // تحريك القوة الخاصة
+            gameState.powerUps.forEach((powerUp, index) => {
+                const top = parseInt(powerUp.style.top) || 0;
+                powerUp.style.top = (top + 3 * gameState.gameSpeed) + 'px';
+                
+                if (top > gameCanvas.offsetHeight) {
+                    powerUp.parentNode.removeChild(powerUp);
+                    gameState.powerUps.splice(index, 1);
+                }
+            });
+        }
+
+        function checkCollisions() {
+            const playerRect = player.getBoundingClientRect();
+            const gameCanvasRect = gameCanvas.getBoundingClientRect();
+            
+            // التحقق من تصادم الكنوز
+            gameState.treasures.forEach((treasure, index) => {
+                const treasureRect = treasure.getBoundingClientRect();
+                if (isColliding(playerRect, treasureRect)) {
+                    gameState.score += 10;
+                    createParticle(treasureRect.left - gameCanvasRect.left, treasureRect.top - gameCanvasRect.top);
+                    treasure.parentNode.removeChild(treasure);
+                    gameState.treasures.splice(index, 1);
+                    
+                    // زيادة المستوى كل 100 نقطة
+                    if (gameState.score % 100 === 0) {
+                        gameState.level++;
+                        gameState.gameSpeed += 0.2;
+                    }
+                }
+            });
+
+            // التحقق من تصادم العقبات
+            if (!gameState.isInvincible) {
+                gameState.obstacles.forEach((obstacle, index) => {
+                    const obstacleRect = obstacle.getBoundingClientRect();
+                    if (isColliding(playerRect, obstacleRect)) {
+                        gameState.lives--;
+                        createParticle(obstacleRect.left - gameCanvasRect.left, obstacleRect.top - gameCanvasRect.top);
+                        obstacle.parentNode.removeChild(obstacle);
+                        gameState.obstacles.splice(index, 1);
+                        
+                        // تأثير الاهتزاز
+                        player.style.animation = 'none';
+                        player.style.transform = 'translateX(-50%) scale(0.8)';
+                        setTimeout(() => {
+                            player.style.transform = 'translateX(-50%) scale(1)';
+                        }, 200);
+                        
+                        if (gameState.lives <= 0) {
+                            endGame();
+                        }
+                    }
+                });
+            }
+
+            // التحقق من تصادم القوة الخاصة
+            gameState.powerUps.forEach((powerUp, index) => {
+                const powerUpRect = powerUp.getBoundingClientRect();
+                if (isColliding(playerRect, powerUpRect)) {
+                    gameState.isInvincible = true;
+                    gameState.invincibilityTimer = 3000; // 3 ثوان
+                    createParticle(powerUpRect.left - gameCanvasRect.left, powerUpRect.top - gameCanvasRect.top);
+                    powerUp.parentNode.removeChild(powerUp);
+                    gameState.powerUps.splice(index, 1);
+                }
+            });
+        }
+
+        function isColliding(rect1, rect2) {
+            return rect1.left < rect2.right &&
+                   rect1.right > rect2.left &&
+                   rect1.top < rect2.bottom &&
+                   rect1.bottom > rect2.top;
+        }
+
+        function spawnObjects() {
+            // إنشاء الكنوز
+            if (Math.random() < 0.02) {
+                createTreasure();
+            }
+            
+            // إنشاء العقبات
+            if (Math.random() < 0.015 + gameState.level * 0.005) {
+                createObstacle();
+            }
+            
+            // إنشاء القوة الخاصة
+            if (Math.random() < 0.005) {
+                createPowerUp();
+            }
+        }
+
+        function updateInvincibility() {
+            if (gameState.isInvincible) {
+                gameState.invincibilityTimer -= 16; // تقليل الوقت
+                if (gameState.invincibilityTimer <= 0) {
+                    gameState.isInvincible = false;
+                }
+            }
+        }
+
+        function gameLoop() {
+            if (!gameState.isPlaying) return;
+            
+            updateInvincibility();
+            spawnObjects();
+            moveObjects();
+            checkCollisions();
+            updateUI();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        function endGame() {
+            gameState.isPlaying = false;
+            finalScoreElement.textContent = gameState.score;
+            
+            if (gameState.score > gameState.highScore) {
+                gameState.highScore = gameState.score;
+                localStorage.setItem('spaceGameHighScore', gameState.highScore);
+            }
+            
+            highScoreElement.textContent = gameState.highScore;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        function restartGame() {
+            // إزالة جميع العناصر
+            gameState.treasures.forEach(treasure => {
+                if (treasure.parentNode) treasure.parentNode.removeChild(treasure);
+            });
+            gameState.obstacles.forEach(obstacle => {
+                if (obstacle.parentNode) obstacle.parentNode.removeChild(obstacle);
+            });
+            gameState.powerUps.forEach(powerUp => {
+                if (powerUp.parentNode) powerUp.parentNode.removeChild(powerUp);
+            });
+            gameState.particles.forEach(particle => {
+                if (particle.parentNode) particle.parentNode.removeChild(particle);
+            });
+            
+            startGame();
+        }
+
+        // التحكم بالمفاتيح
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
+                movePlayer('left');
+            } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
+                movePlayer('right');
+            } else if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                if (!gameState.isPlaying && startScreen.style.display !== 'none') {
+                    startGame();
+                } else if (!gameState.isPlaying && gameOverScreen.style.display !== 'none') {
+                    restartGame();
+                }
+            }
+        });
+
+        // التحكم باللمس للهواتف
+        let touchStartX = 0;
+        gameCanvas.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        gameCanvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            const touchX = e.touches[0].clientX;
+            const diff = touchX - touchStartX;
+            
+            if (Math.abs(diff) > 20) {
+                if (diff > 0) {
+                    movePlayer('right');
+                } else {
+                    movePlayer('left');
+                }
+                touchStartX = touchX;
+            }
+        });
+
+        // تحديث النقاط العالية في البداية
+        highScoreElement.textContent = gameState.highScore;
+    </script>
+</body>
+</html>
